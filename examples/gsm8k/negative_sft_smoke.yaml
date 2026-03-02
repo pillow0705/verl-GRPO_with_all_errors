@@ -40,8 +40,8 @@ algorithm:
 
 data:
   tokenizer: /home/shared/Qwen2.5-1.5B-Instruct
-  train_files: /home/shared/xzliang/data/gsm8k/train.parquet
-  val_files: /home/shared/xzliang/data/gsm8k/test.parquet
+  train_files: /home/shared/xzliang/data/gsm8k/processed_boxed/train.parquet
+  val_files: /home/shared/xzliang/data/gsm8k/processed_boxed/test.parquet
   train_batch_size: 64
   val_batch_size: 256
   max_prompt_length: 512
