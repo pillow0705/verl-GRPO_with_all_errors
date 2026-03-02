@@ -124,26 +124,6 @@ class DataParallelPPOActor(BasePPOActor):
         """
         calculate_sum_pi_squared = self.config.get("calculate_sum_pi_squared", False)
         sum_pi_squared_checkpointing = self.config.get("sum_pi_squared_checkpointing", False)
-        # PrefixGrouper path for shared-prefix optimization
-        if self.use_prefix_grouper:
-            can_use_pg = (
-                not self.use_remove_padding
-                and not self.use_ulysses_sp
-                and not self.use_fused_kernels
-                and not self.use_dynamic_bsz
-            )
-            if can_use_pg and "response_mask" in micro_batch and "uid" in micro_batch:
-                from verl.trainer.ppo.prefix_grouper_utils import forward_micro_batch_with_prefix_grouper
-
-                return forward_micro_batch_with_prefix_grouper(
-                    micro_batch=micro_batch,
-                    model=self.actor_module,
-                    temperature=temperature,
-                    calculate_entropy=calculate_entropy,
-                    device_name=self.device_name,
-                    param_dtype=self.param_dtype,
-                    use_chunking_entropy=self.config.get("entropy_from_logits_with_chunking", False),
-                )
 
         response_length = micro_batch["responses"].size(-1)
         multi_modal_inputs = {}
@@ -623,19 +603,6 @@ class DataParallelPPOActor(BasePPOActor):
                     )
                     micro_batch_metrics.update(pg_metrics)
 
-                    # Skip if using bypass_mode loss (metrics already computed in pg_metrics)
-                    rollout_log_prob = model_inputs.get("rollout_log_probs", None)
-                    if loss_mode != "bypass_mode" and rollout_log_prob is not None:
-                        # Compute metrics using CURRENT policy π_θ vs π_rollout
-                        # Tracks evolving off-policy gap as π_θ updates during mini-batch training
-                        from verl.trainer.ppo.rollout_corr_helper import compute_rollout_corr_metrics_from_logprobs
-
-                        rollout_corr_metrics = compute_rollout_corr_metrics_from_logprobs(
-                            log_prob=log_prob,
-                            rollout_log_prob=rollout_log_prob,
-                            response_mask=response_mask,
-                        )
-                        micro_batch_metrics.update(rollout_corr_metrics)
 
                     policy_loss = pg_loss
                     if calculate_entropy and entropy is not None:

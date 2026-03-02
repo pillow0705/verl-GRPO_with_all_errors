@@ -166,12 +166,7 @@ def compute_advantage(
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
-        if config.get("use_pf_ppo", False):
-            data = core_algos.compute_pf_ppo_reweight_data(
-                data,
-                config.pf_ppo.get("reweight_method"),
-                config.pf_ppo.get("weight_pow"),
-            )
+
     elif adv_estimator == AdvantageEstimator.GRPO:
         # Initialize the mask for GRPO calculation
         grpo_calculation_mask = data.batch["response_mask"]
