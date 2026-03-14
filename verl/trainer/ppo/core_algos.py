@@ -2481,3 +2481,61 @@ def compute_policy_loss_bypass_mode(
     pg_metrics.update(rollout_metrics)
 
     return pg_loss, pg_metrics
+
+
+@register_policy_loss("negative_sft")
+def compute_policy_loss_negative_sft(
+    old_log_prob: torch.Tensor,
+    log_prob: torch.Tensor,
+    advantages: torch.Tensor,
+    response_mask: torch.Tensor,
+    loss_agg_mode: str = "token-mean",
+    config: Optional[ActorConfig] = None,
+    rollout_is_weights: torch.Tensor | None = None,
+) -> tuple[torch.Tensor, dict[str, Any]]:
+    """Negative SFT loss for training on all-error samples.
+
+    When all rollout responses are incorrect, GRPO advantage collapses to zero
+    (mean=0, std=0), providing no gradient signal. This loss directly penalizes
+    wrong responses by minimizing their log-probability:
+
+        L_neg_sft = + mean_t[ log pi_theta(y^-_t | y^-_{<t}, x) ]
+                  = - L_SFT(y^-)
+
+    Minimizing this loss via gradient descent decreases pi_theta(y^- | x),
+    i.e., the model learns to avoid generating the wrong response.
+
+    Note: `advantages` and `old_log_prob` are unused; the loss depends only on
+    the current policy log-probabilities `log_prob`.
+
+    Args:
+        old_log_prob: Log-probs under old policy (unused). Shape: (B, T).
+        log_prob: Log-probs under current policy. Shape: (B, T).
+        advantages: Advantage estimates (unused). Shape: (B, T).
+        response_mask: Valid token mask. Shape: (B, T).
+        loss_agg_mode: Aggregation mode passed to `agg_loss`.
+        config: Actor config.
+        rollout_is_weights: Importance-sampling weights (unused).
+
+    Returns:
+        pg_loss: Scalar loss tensor.
+        pg_metrics: Dict with `actor/neg_sft_avg_log_prob`.
+    """
+    assert config is not None
+
+    # L = + log pi_theta(y^- | x)  [token-level, shape (B, T)]
+    pg_losses = log_prob
+
+    pg_loss = agg_loss(
+        loss_mat=pg_losses,
+        loss_mask=response_mask,
+        loss_agg_mode=loss_agg_mode,
+        **({} if config is None else config.global_batch_info),
+    )
+
+    avg_log_prob = verl_F.masked_mean(log_prob, response_mask)
+    pg_metrics = {
+        "actor/neg_sft_avg_log_prob": avg_log_prob.detach().item(),
+    }
+
+    return pg_loss, pg_metrics
