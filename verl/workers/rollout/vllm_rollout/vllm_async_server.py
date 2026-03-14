@@ -38,8 +38,15 @@ from vllm.outputs import RequestOutput
 from vllm.usage.usage_lib import UsageContext
 from vllm.v1.engine.async_llm import AsyncLLM
 from vllm.v1.engine.core import EngineCoreProc
-from vllm.v1.engine.utils import CoreEngineProcManager
 from vllm.v1.executor.abstract import Executor
+
+try:
+    from vllm.v1.engine.utils import CoreEngineProcManager
+except ImportError:
+    # vllm < 0.9 does not have vllm.v1.engine.utils; CoreEngineProcManager is
+    # only needed for multi-node headless mode (node_rank != 0), not for
+    # single-node training.
+    CoreEngineProcManager = None
 
 from verl.single_controller.ray import RayClassWithInitArgs
 from verl.utils.config import omega_conf_to_dataclass
@@ -407,6 +414,11 @@ class vLLMHttpServerBase:
         self._server_port, self._server_task = await run_unvicorn(app, args, self._server_address)
 
     async def run_headless(self, args: argparse.Namespace):
+        if CoreEngineProcManager is None:
+            raise ImportError(
+                "CoreEngineProcManager is not available in this vllm version. "
+                "Multi-node headless mode requires vllm >= 0.9."
+            )
         # Create the EngineConfig.
         engine_args = vllm.AsyncEngineArgs.from_cli_args(args)
         usage_context = UsageContext.OPENAI_API_SERVER

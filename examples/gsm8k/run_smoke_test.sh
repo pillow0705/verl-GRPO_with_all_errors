@@ -7,8 +7,8 @@
 
 set -e
 
-# 激活conda环境（根据服务器实际环境修改）
-# conda activate verl
+# 激活conda环境
+conda activate luffy
 
 # 切换到项目根目录
 cd "$(dirname "$0")/../.."
@@ -37,7 +37,6 @@ CUDA_VISIBLE_DEVICES=0 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.policy_loss.loss_mode=negative_sft \
     actor_rollout_ref.actor.optim.lr=1e-5 \
     actor_rollout_ref.actor.optim.lr_warmup_steps=0 \
-    actor_rollout_ref.rollout.mode=sync \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.temperature=1.0 \
     actor_rollout_ref.rollout.top_k=-1 \
