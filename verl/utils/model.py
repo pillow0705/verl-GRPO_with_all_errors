@@ -25,7 +25,11 @@ from typing import Optional
 import numpy as np
 import torch
 from tensordict import TensorDict
-from tensordict.utils import LinkedList
+try:
+    from tensordict.utils import LinkedList
+except ImportError:
+    # tensordict < 0.8 does not have LinkedList; only needed for multimodal inputs
+    LinkedList = type("LinkedList", (), {})
 from torch import nn
 from transformers import (
     AutoConfig,
