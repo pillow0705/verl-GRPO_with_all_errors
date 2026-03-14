@@ -62,19 +62,26 @@ from verl.workers.rollout.vllm_rollout.utils import (
     get_vllm_max_lora_rank,
 )
 
-if vllm.__version__ > "0.11.0":
+try:
+    # vllm >= 0.12: utils split into submodules
     from vllm.utils.argparse_utils import FlexibleArgumentParser
     from vllm.utils.network_utils import get_tcp_uri
-
-    if vllm.__version__ == "0.12.0":
-        from vllm.entrypoints.harmony_utils import get_encoding
-
-        get_encoding()
-else:
+except (ImportError, ModuleNotFoundError):
+    # vllm <= 0.11 (or 0.8.x): utils is a single module
     from vllm.utils import FlexibleArgumentParser, get_tcp_uri
-if vllm.__version__ >= "0.12.0":
+
+try:
+    from vllm.entrypoints.harmony_utils import get_encoding
+
+    get_encoding()
+except (ImportError, ModuleNotFoundError):
+    pass
+
+try:
     from vllm.v1.core.sched.output import GrammarOutput, SchedulerOutput
     from vllm.v1.outputs import ModelRunnerOutput
+except (ImportError, ModuleNotFoundError):
+    GrammarOutput = SchedulerOutput = ModelRunnerOutput = None
 
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
