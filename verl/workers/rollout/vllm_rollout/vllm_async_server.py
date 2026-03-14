@@ -65,10 +65,19 @@ from verl.workers.rollout.vllm_rollout.utils import (
 try:
     # vllm >= 0.12: utils split into submodules
     from vllm.utils.argparse_utils import FlexibleArgumentParser
-    from vllm.utils.network_utils import get_tcp_uri
 except (ImportError, ModuleNotFoundError):
     # vllm <= 0.11 (or 0.8.x): utils is a single module
-    from vllm.utils import FlexibleArgumentParser, get_tcp_uri
+    from vllm.utils import FlexibleArgumentParser
+
+try:
+    from vllm.utils.network_utils import get_tcp_uri
+except (ImportError, ModuleNotFoundError):
+    try:
+        from vllm.utils import get_tcp_uri
+    except (ImportError, ModuleNotFoundError):
+        # vllm 0.8.x: get_tcp_uri not available; only needed for multi-node headless mode
+        def get_tcp_uri(host, port):
+            return f"tcp://{host}:{port}"
 
 try:
     from vllm.entrypoints.harmony_utils import get_encoding
