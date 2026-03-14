@@ -408,20 +408,29 @@ class vLLMHttpServerBase:
         vllm_config = engine_args.create_engine_config(usage_context=usage_context)
         vllm_config.parallel_config.data_parallel_master_port = self._dp_master_port
 
+        # Build log kwargs: vllm >= 0.9 uses enable_log_requests; 0.8.x uses disable_log_requests
+        _log_kwargs = {}
+        if hasattr(engine_args, "enable_log_requests"):
+            _log_kwargs["enable_log_requests"] = engine_args.enable_log_requests
+        else:
+            _log_kwargs["disable_log_requests"] = getattr(engine_args, "disable_log_requests", False)
+
         engine_client = AsyncLLM.from_vllm_config(
             vllm_config=vllm_config,
             usage_context=usage_context,
-            enable_log_requests=engine_args.enable_log_requests,
             disable_log_stats=engine_args.disable_log_stats,
+            **_log_kwargs,
         )
 
         # Don't keep the dummy data in memory
         await engine_client.reset_mm_cache()
 
         app = build_app(args)
-        if vllm.__version__ > "0.11.0":
+        try:
+            # vllm >= 0.12: init_app_state(engine_client, state, args)
             await init_app_state(engine_client, app.state, args)
-        else:
+        except TypeError:
+            # vllm 0.8.x: init_app_state(engine_client, vllm_config, state, args)
             await init_app_state(engine_client, vllm_config, app.state, args)
         if self.replica_rank == 0 and self.node_rank == 0:
             logger.info(f"Initializing a V1 LLM engine with config: {vllm_config}")
