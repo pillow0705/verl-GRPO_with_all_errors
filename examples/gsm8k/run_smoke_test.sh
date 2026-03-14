@@ -7,8 +7,8 @@
 
 set -e
 
-# 激活conda环境
-conda activate luffy
+# 激活conda环境：使用 conda run -n luffy bash examples/gsm8k/run_smoke_test.sh
+# 或先 conda activate luffy 再运行本脚本
 
 # 切换到项目根目录
 cd "$(dirname "$0")/../.."
@@ -20,6 +20,9 @@ if [ ! -f "$DATA_DIR/train.parquet" ]; then
     echo "请先确认数据路径，或运行数据处理脚本"
     exit 1
 fi
+
+# verl使用vllm V1引擎（AsyncLLM），需要在vllm 0.8.x上显式开启
+export VLLM_USE_V1=1
 
 echo "========================================="
 echo "开始冒烟测试：Negative SFT on GSM8K"
